@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Main Web Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: portfolio-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - portfolio-network
+    volumes:
+      - ./public:/app/public:ro
+    labels:
+      - "com.portfolio.description=Portfolio Website"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy (Optional - untuk production dengan SSL)
+  nginx:
+    image: nginx:alpine
+    container_name: portfolio-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - web
+    networks:
+      - portfolio-network
+    labels:
+      - "com.portfolio.description=Nginx Reverse Proxy"
+
+networks:
+  portfolio-network:
+    driver: bridge
+    labels:
+      - "com.portfolio.network=main"
+
+volumes:
+  nginx-logs:
+    driver: local
